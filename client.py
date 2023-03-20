@@ -170,6 +170,12 @@ class User():
             print("Key in hello message doesn't match key from server")
             return
 
+        
+        #convert from bytes to  object
+        key_bundle['IK_p'] = x25519.X25519PublicKey.from_public_bytes(key_bundle['IK_p'])
+        key_bundle['SPK_p'] = x25519.X25519PublicKey.from_public_bytes(key_bundle['SPK_p'])
+        key_bundle['OPK_p'] = x25519.X25519PublicKey.from_public_bytes(key_bundle['OPK_p'])
+
         # Verify Signed pre key from server
         if not self.verify(key_bundle['IK_p'],self.dump_publickey(key_bundle['IK_p']),key_bundle['SPK_sig']):
             print('Unable to verify Signed Prekey')
