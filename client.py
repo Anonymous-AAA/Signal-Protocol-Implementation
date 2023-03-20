@@ -42,12 +42,12 @@ class User():
 
     def publish(self):
         bundle= {
-          'IK_p': self.IK_p,
-          'SPK_p': self.SPK_p,
+          'IK_p': self.dump_publickey(self.IK_p),
+          'SPK_p': self.dump_publickey(self.SPK_p),
           'SPK_sig': self.SPK_sig,
-          'OPKs_p': self.OPKs_p
+          'OPK_p': self.dump_publickey(self.OPKs_p[0])  #Only one key is send
         }
-        server.post(self.name,bundle)
+        server.publish(self.name,bundle)
         
         
       
@@ -68,6 +68,11 @@ class User():
             self.key_bundles[user_name]['EK_s'] = sk
             self.key_bundles[user_name]['EK_p'] = sk.public_key()
 
+            #Converting bytes to objects
+            self.key_bundles[user_name]['IK_p'] = x25519.X25519PublicKey.from_public_bytes(self.key_bundles[user_name]['IK_p'])
+            self.key_bundles[user_name]['SPK_p'] = x25519.X25519PublicKey.from_public_bytes(self.key_bundles[user_name]['SPK_p'])
+            self.key_bundles[user_name]['OPK_p'] = x25519.X25519PublicKey.from_public_bytes(self.key_bundles[user_name]['OPK_p'])
+
     def x3dh_KDF(self,key_material):
         km = KDF_F + key_material
         return HKDF(km, KDF_LEN, KDF_SALT, SHA256, 1)
@@ -81,12 +86,13 @@ class User():
         DH_3 = key_bundle['EK_s'].exchange(key_bundle['SPK_p'])
         DH_4 = key_bundle['EK_s'].exchange(key_bundle['OPK_p'])
 
-        if not self.verify(key_bundle['IK_p'],self.dump_publickey(['SPK_p']),key_bundle['SPK_sig']):
+        if not self.verify(key_bundle['IK_p'],self.dump_publickey(key_bundle['SPK_p']),key_bundle['SPK_sig']):
             print('Unable to verify Signed Prekey')
             return
 
         # create SK
         key_bundle['SK'] = self.x3dh_KDF(DH_1 + DH_2 + DH_3 + DH_4)
+        print(key_bundle['SK'])
     
     def dump_privatekey(self,private_key):
         private_key = private_key.private_bytes(
@@ -103,7 +109,7 @@ class User():
         )
         return public_key
 
-    def build_x3dh_hello(self, server, to, ad):
+    def build_x3dh_hello(self,to, ad):
         # Binary additional data
         b_ad = (json.dumps({
           'from': self.name,
@@ -129,16 +135,21 @@ class User():
         # initial message: (32 + 32 +32) + 16 + 16 + 64 + 32 + 32 + len(ad)
         message = key_comb + nonce + tag + ciphertext
 
-        server.send(to, message)
+        server.send(self.name,to,message)
 
         # For Double Ratchet
         self.dr_state_initialize(to, key_bundle['SK'], [key_bundle['EK_s'], key_bundle['EK_p']], "")
     
       # Continue in Class Client
-    def recv_x3dh_hello_message(self, server):
+    def recv_x3dh_hello_message(self):
 
         # receive the hello message
-        sender, recv = server.get_message()
+        sender, recv = server.get_message(self.name)
+        
+        if sender=='none':
+            print('sender is none in recv_x3dh_hello_message')
+            exit(1)
+
         self.get_key_bundle(sender)
 
         key_bundle = self.key_bundles[sender]
