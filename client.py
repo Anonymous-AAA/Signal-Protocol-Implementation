@@ -89,10 +89,12 @@ class User():
         if not self.verify(key_bundle['IK_p'],self.dump_publickey(key_bundle['SPK_p']),key_bundle['SPK_sig']):
             print('Unable to verify Signed Prekey')
             return
+        else:
+            print('Prekey successfully verified')
 
         # create SK
         key_bundle['SK'] = self.x3dh_KDF(DH_1 + DH_2 + DH_3 + DH_4)
-        print(key_bundle['SK'])
+        print("Secret Key : ",key_bundle['SK'])
     
     def dump_privatekey(self,private_key):
         private_key = private_key.private_bytes(
@@ -149,6 +151,8 @@ class User():
         if sender=='none':
             print('sender is none in recv_x3dh_hello_message')
             exit(1)
+        else:
+            print('Sender: ',sender)
 
         self.get_key_bundle(sender)
 
