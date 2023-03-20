@@ -27,7 +27,7 @@ class Server():
 
     def get_key_bundle(self,username:str):
         if username in self.key_bundles:
-            return self.key_bundles[username]
+            return self.key_bundles[username].copy()   #dont pass reference
         else:
             return None
 
