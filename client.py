@@ -7,6 +7,7 @@ from Crypto.Random import get_random_bytes
 from Crypto.Cipher import AES
 import json
 import os
+from server import Server
 
 MAX_OPK_NUM=1
 KDF_F = b'\xff' * 32
@@ -17,9 +18,11 @@ AES_N_LEN = 16
 AES_TAG_LEN =16
 EC_KEY_LEN = 32
 
+server=Server()
+
 class User():
 
-    def __init__(self, name, MAX_OPK_NUM):
+    def __init__(self, name, MAX_OPK_NUM=MAX_OPK_NUM):
         self.name = name
         self.IK_s = x25519.X25519PrivateKey.generate()
         self.IK_p = self.IK_s.public_key()
@@ -38,15 +41,19 @@ class User():
         self.dr_keys= {}
 
     def publish(self):
-      return {
+        bundle= {
           'IK_p': self.IK_p,
           'SPK_p': self.SPK_p,
           'SPK_sig': self.SPK_sig,
           'OPKs_p': self.OPKs_p
-      }
+        }
+        server.post(self.name,bundle)
+        
+        
+      
     
  # Get key bundle from a server object
-    def get_key_bundle(self, server, user_name):
+    def get_key_bundle(self,user_name):
         if user_name in self.key_bundles and user_name in self.dr_keys:
             print('Already stored ' + user_name + ' locally, no need handshake again')
             return False
@@ -54,8 +61,8 @@ class User():
         self.key_bundles[user_name] = server.get_key_bundle(user_name)
         return True
 
-    def initial_handshake(self, server, user_name):
-        if self.get_key_bundle(server,user_name):
+    def initial_handshake(self,user_name):
+        if self.get_key_bundle(user_name):
       	    # Generate Ephemeral Key
             sk = x25519.X25519PrivateKey.generate()
             self.key_bundles[user_name]['EK_s'] = sk
@@ -132,7 +139,7 @@ class User():
 
         # receive the hello message
         sender, recv = server.get_message()
-        self.get_key_bundle(server, sender)
+        self.get_key_bundle(sender)
 
         key_bundle = self.key_bundles[sender]
 
