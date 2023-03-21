@@ -177,9 +177,13 @@ class User():
         key_bundle['OPK_p'] = x25519.X25519PublicKey.from_public_bytes(key_bundle['OPK_p'])
 
         # Verify Signed pre key from server
-        if not self.verify(key_bundle['IK_p'],self.dump_publickey(key_bundle['IK_p']),key_bundle['SPK_sig']):
+        if not self.verify(key_bundle['IK_p'],self.dump_publickey(key_bundle['SPK_p']),key_bundle['SPK_sig']):
             print('Unable to verify Signed Prekey')
             return
+
+        IK_pa=x25519.X25519PublicKey.from_public_bytes(IK_pa)
+        EK_pa=x25519.X25519PublicKey.from_public_bytes(EK_pa)
+        OPK_pb=x25519.X25519PublicKey.from_public_bytes(OPK_pb)
 
         sk = self.generate_recv_secret_key(IK_pa, EK_pa, OPK_pb)
         print('bob sk: ', sk)
@@ -187,7 +191,7 @@ class User():
         if sk is None:
           return
 
-        key_bundle['SK'] = sk
+        key_bundle['sk'] = sk
         message = self.x3dh_decrypt_and_verify(key_bundle, IK_pa, EK_pa, nonce, tag, ciphertext,OPK_pb)
 
         # For Double Ratchet
@@ -202,7 +206,7 @@ class User():
         list=self.OKPs
 
         for sk,pk in list:
-            if pk==OPK_pb:
+            if self.dump_publickey(pk)==self.dump_publickey(OPK_pb):
                 return sk
         return None
 
@@ -214,9 +218,11 @@ class User():
         OPK_sb = self.search_OPK_lst(OPK_pb)
         if OPK_sb is None:
           return
+        else:
+            print("Found OPK")
 
-        IK_pa = x25519.X25519PublicKey.from_public_bytes(IK_pa)
-        EK_pa = x25519.X25519PublicKey.from_public_bytes(EK_pa)
+#        IK_pa = x25519.X25519PublicKey.from_public_bytes(IK_pa)
+#        EK_pa = x25519.X25519PublicKey.from_public_bytes(EK_pa)
 
         DH_1 = self.SPK_s.exchange(IK_pa)
         DH_2 = self.IK_s.exchange(EK_pa)
@@ -244,11 +250,15 @@ class User():
         IK_pb_p = p_all[EC_SIGN_LEN+EC_KEY_LEN:EC_SIGN_LEN+EC_KEY_LEN*2]
         ad = p_all[EC_SIGN_LEN+EC_KEY_LEN*2:]
 
-        if (IK_pa != IK_pa_p and self.IK_p != IK_pb_p):
+        
+
+        if (self.dump_publickey(IK_pa) != IK_pa_p and self.dump_publickey(self.IK_p)!= IK_pb_p):
             print("Keys from header and ciphertext not match")
             return
 
-        if not self.verify(IK_pa,IK_pa_p + EK_pa + OPK_pb + ad,sign):
+        
+
+        if not self.verify(IK_pa,IK_pa_p +self.dump_publickey(EK_pa) + self.dump_publickey(OPK_pb) + ad,sign):
             print("Unable to verify the message signature")
             return
 
