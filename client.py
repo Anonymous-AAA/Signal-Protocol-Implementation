@@ -266,6 +266,7 @@ class User():
                 DH_4 = OPK_sb.exchange(EK_pa_obj)
                 return self.x3dh_KDF(DH_1 + DH_2 + DH_3 +DH_4)
         else:
+                print("OPKs are exhausted in the server")
                 return self.x3dh_KDF(DH_1 + DH_2 + DH_3)
 
 
