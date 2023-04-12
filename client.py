@@ -107,11 +107,12 @@ class User():
 
         # create SK
         if len(DH_4)!=0 :
-            key_bundle['SK'] = self.x3dh_KDF(DH_1 + DH_2 + DH_3 + DH_4)
+            key_bundle['sk'] = self.x3dh_KDF(DH_1 + DH_2 + DH_3 + DH_4)
         else:
-            key_bundle['SK'] = self.x3dh_KDF(DH_1 + DH_2 + DH_3)
+            key_bundle['sk'] = self.x3dh_KDF(DH_1 + DH_2 + DH_3)
 
-        print("Secret Key : ",key_bundle['SK'])
+#        print("Secret Key : ",key_bundle['sk'])
+        print(f"Generated secret key between {self.name} and {user_name}")
 
         #Delete ephemeral private key
         self.key_bundles[user_name]['EK_s'] = ""
@@ -135,28 +136,30 @@ class User():
         #global EC_SIGN_LEN
         #EC_SIGN_LEN=len(signature)
         #print(EC_SIGN_LEN)
-        print("Alice message signature: ", signature)
-        print("Data: ", key_comb + b_ad)
+        #print("Alice message signature: ", signature)
+        #print("Data: ", key_comb + b_ad)
 
         # 16 byte aes nonce
         nonce = get_random_bytes(AES_N_LEN)
-        cipher = AES.new(key_bundle['SK'], AES.MODE_GCM, nonce=nonce, mac_len=AES_TAG_LEN)
+        cipher = AES.new(key_bundle['sk'], AES.MODE_GCM, nonce=nonce, mac_len=AES_TAG_LEN)
         # 32 + 32 + len(ad) byte cipher text
         ciphertext, tag = cipher.encrypt_and_digest(signature + self.IK_p+ key_bundle['IK_p']+ b_ad)
 
         # initial message: (32 + 32 +32) + 16 + 16 + 64 + 32 + 32 + len(ad)
         message = key_comb + nonce + tag + ciphertext
 
-        print(f"Message sent : {message}")
+        #print(f"Message sent : {message}")
 
         server.send(self.name,to,message)
+        print(f"Initial Message sent")
 
         # For Double Ratchet
-        self.dr_state_initialize(to, key_bundle['SK'], [key_bundle['EK_s'], key_bundle['EK_p']], "")
+        self.dr_state_initialize(to, key_bundle['sk'], [key_bundle['EK_s'], key_bundle['EK_p']], "")
 
 
 
-    def recvInitialMessage(self) -> tuple[bytes,str]:
+#if not initial message it will call recvMessage
+    def recvInitialMessage(self) -> str:
 
         # receive the hello message
         sender, recv = server.get_message(self.name)
@@ -166,7 +169,8 @@ class User():
         else:
             print(f'Received Message from {sender}')
 
-        self.getKeyBundle(sender)
+        if not self.getKeyBundle(sender):
+            return self.recvMessage()
 
         key_bundle = self.key_bundles[sender]
 
@@ -191,7 +195,8 @@ class User():
 
 
         sk = self.generateRecvSecretKey(IK_pa, EK_pa, OPK_pb)
-        print('Receiver Secret Key: ', sk)
+        #print('Receiver Secret Key: ', sk)
+        print('Genererated secret key')
 
 
         key_bundle['sk'] = sk
@@ -207,8 +212,7 @@ class User():
             print("Deleted receiver's One time prekey after decryption for forward secrecy")
 
 
-        # Get Ek_pa and plaintext ad
-        return EK_pa, message
+        return message
 
 
 
@@ -245,7 +249,7 @@ class User():
             print("Unable to verify the message signature")
             exit(1)
 
-        print('Message: ', json.loads(ad))
+        #print('Message: ', json.loads(ad))
         return json.loads(ad)
 
 
@@ -280,9 +284,55 @@ class User():
 
 
 
+    def sendMessage(self,to: str, message : str):
+        key_bundle = self.key_bundles[to]
+        b_ad = (json.dumps({
+          'from': self.name,
+          'to': to,
+          'message': message
+        })).encode('utf-8')
+
+        # 16 byte aes nonce
+        nonce = get_random_bytes(AES_N_LEN)
+        cipher = AES.new(key_bundle['sk'], AES.MODE_GCM, nonce=nonce, mac_len=AES_TAG_LEN)
+        ciphertext, tag = cipher.encrypt_and_digest(b_ad)
+        server.send(self.name,to,nonce+tag+ciphertext)
+        print(f"Message sent")
 
 
 
+
+    def recvMessage(self) -> str:
+
+        # receive the hello message
+        sender, recv = server.get_message(self.name)
+        if sender=='none':
+            print('No new messages')
+            exit(1)
+        else:
+            print(f'Received Message from {sender}')
+
+
+        key_bundle = self.key_bundles[sender]
+
+        nonce = recv[:AES_N_LEN]
+        tag = recv[AES_N_LEN:AES_N_LEN+AES_TAG_LEN]
+        ciphertext = recv[AES_N_LEN+AES_TAG_LEN:]
+
+
+        cipher = AES.new(key_bundle['sk'], AES.MODE_GCM, nonce=nonce, mac_len=AES_TAG_LEN)
+        try:
+            p_all = cipher.decrypt_and_verify(ciphertext, tag)
+        except ValueError:
+            print('Unable to verify/decrypt ciphertext')
+            exit(1)
+        except Exception as e:
+            print(e)
+            exit(1)
+
+        message=json.loads(p_all)
+
+        return message
 
 
 

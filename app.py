@@ -22,11 +22,12 @@ while True:
                 user.generateSendSecretKey(receiver)
                 user.sendInitialMessage(receiver,f"Initial message from {username}")
             
-            #message=input("Enter the message to be send\n")
-            #user.sendInitialMessage(receiver,message)
+            message=input("Enter the message to be send\n")
+            user.sendMessage(receiver,message)
         
         case "2":
-            message=user.recvInitialMessage()
+            message=user.recvInitialMessage() #if not initial message it will call recvMessage()
+            print(message)
         
         case default:
             break
