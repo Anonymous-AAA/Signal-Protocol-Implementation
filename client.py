@@ -48,7 +48,7 @@ class User():
           'IK_p': self.IK_p,
           'SPK_p': self.SPK_p,
           'SPK_sig': self.SPK_sig,
-          'OPK_p': self.OPKs_p  #all keys are send
+          'OPK_p': self.OPKs_p.copy()  #all keys are send
         }
         server.publish(self.name,bundle)
 
@@ -198,6 +198,13 @@ class User():
         # For Double Ratchet
         self.dr_state_initialize(sender, sk, [], EK_pa)
 
+
+        #Delete one time prekey for forward secrecy
+        if OPK_pb!=KDF_F:     #checking whether prekey was used
+            self.deleteOPK(OPK_pb)
+            print("Deleted receiver's One time prekey after decryption for forward secrecy")
+
+
         # Get Ek_pa and plaintext ad
         return EK_pa, message
 
@@ -298,6 +305,16 @@ class User():
             if pk == OPK_pb:
                 return sk
         return None
+
+
+    def deleteOPK(self,OPK_pb : bytes):
+        sk=self.search_OPK_lst(OPK_pb)
+        if sk is None :
+            print("OPK to be deleted not found")
+            exit(1)
+        else:
+            self.OPKs_p.remove(OPK_pb)
+            self.OPKs.remove((sk,OPK_pb))
 
 
     def dumpPrivatekey(self,private_key) -> bytes:
