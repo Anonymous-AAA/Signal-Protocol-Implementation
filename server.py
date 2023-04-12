@@ -6,10 +6,7 @@ class Server():
 
     def __init__(self):
         try:
-            with open(DB_FILE,'rb') as file:
-                pkl=pickle.load(file)
-                self.key_bundles=pkl.key_bundles
-                self.messages=pkl.messages
+            self.refresh()
         except FileNotFoundError:
             self.key_bundles={}
             self.messages={}
@@ -19,13 +16,22 @@ class Server():
     def dump(self):
         with open(DB_FILE,'wb') as file:
             pickle.dump(self,file)
+    
+    def refresh(self):
+        with open(DB_FILE,'rb') as file:
+            pkl=pickle.load(file)
+            self.key_bundles=pkl.key_bundles
+            self.messages=pkl.messages
+
 
 
     def publish(self,username:str,key_bundle:object):
+        self.refresh()
         self.key_bundles[username]=key_bundle
         self.dump()
 
     def get_key_bundle(self,username:str) -> dict | None:
+        self.refresh()
         if username in self.key_bundles:
             bundle=self.key_bundles[username].copy()
 
@@ -40,12 +46,14 @@ class Server():
 
 
     def send(self,fr:str,to:str,message:bytes):
+        self.refresh()
         self.messages[(fr,to)]=message
         self.dump()
 
 
     def get_message(self,username:str) -> tuple[str,bytes]:
 
+        self.refresh()
         out=('none',bytes())
 
         for x,y in self.messages.items():

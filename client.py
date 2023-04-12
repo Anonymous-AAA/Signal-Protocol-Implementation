@@ -17,6 +17,7 @@ KDF_SALT = b'\0' * KDF_LEN
 AES_N_LEN = 16
 AES_TAG_LEN =16
 EC_KEY_LEN = 32
+EC_SIGN_LEN=64
 
 server=Server()
 
@@ -131,8 +132,9 @@ class User():
         key_comb = self.IK_p+key_bundle['EK_p']+key_bundle['OPK_p']
 
         signature = self.sign(self.IK_s, key_comb + b_ad)
-        global EC_SIGN_LEN
-        EC_SIGN_LEN=len(signature)
+        #global EC_SIGN_LEN
+        #EC_SIGN_LEN=len(signature)
+        #print(EC_SIGN_LEN)
         print("Alice message signature: ", signature)
         print("Data: ", key_comb + b_ad)
 
