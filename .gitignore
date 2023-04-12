@@ -4,3 +4,4 @@ venv/
 server.db
 .*
 docs/
+temp/
