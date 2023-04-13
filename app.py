@@ -11,7 +11,7 @@ user.publish()
 
 while True:
 
-    option=input("1.Send Message\n2.Receive Messages\nAny other key to exit\n")
+    option=input("1.Send Message\n2.Receive Messages\nPress enter to exit\n")
 
     match option:
 

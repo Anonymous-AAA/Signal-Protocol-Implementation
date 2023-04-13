@@ -112,6 +112,8 @@ class User():
         if key_bundle['OPK_p'] !=KDF_F:   #checking whether the all prekeys are used up
             OPK_p=x25519.X25519PublicKey.from_public_bytes(key_bundle['OPK_p'])
             DH_4 = key_bundle['EK_s'].exchange(OPK_p)
+        else:
+            print("OPKs are exhausted in the server")
 
         # create SK
         if len(DH_4)!=0 :
