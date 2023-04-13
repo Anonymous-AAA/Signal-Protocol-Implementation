@@ -55,7 +55,7 @@ class User():
 
 
  # Get key bundle from a server object
-    def getKeyBundle(self,user_name :str) -> bool:
+    def getKeyBundle(self,user_name :str) -> bool|None:
         if user_name in self.key_bundles and user_name in self.dr_keys:
             print(f'Already stored  {user_name} locally, no need handshake again')
             return False
@@ -64,12 +64,18 @@ class User():
 
         if self.key_bundles[user_name] is None:
             print(f"Error : User {user_name} does not exist")
-            exit(1)
+            return
         return True
 
 
-    def initialHandshake(self,user_name):
-        if self.getKeyBundle(user_name):
+    def initialHandshake(self,user_name : str) -> bool:
+
+        check=self.getKeyBundle(user_name)
+
+        if check is None:
+            return False
+
+        if check:
 
             key_bundle=self.key_bundles[user_name]
 
@@ -83,6 +89,8 @@ class User():
             sk = x25519.X25519PrivateKey.generate()
             self.key_bundles[user_name]['EK_s'] = sk
             self.key_bundles[user_name]['EK_p'] = self.dumpPublickey(sk.public_key())
+        
+        return True
 
 
     def x3dh_KDF(self,key_material):
@@ -159,20 +167,21 @@ class User():
 
 
 #if not initial message it will call recvMessage
-    def recvInitialMessage(self) -> str:
+    def recvInitialMessage(self,sender :str,recv : bytes) -> str:
 
         # receive the hello message
-        sender, recv = server.get_message(self.name)
-        if sender=='none':
-            print('No new messages')
-            exit(1)
-        else:
-            print(f'Received Message from {sender}')
+        #sender, messageList = server.get_message(self.name)
+        #if sender=='none':
+        #    print('No new messages')
+        #    exit(1)
+        #else:
+        #    print(f'Received Message from {sender}')
 
-        if not self.getKeyBundle(sender):
-            return self.recvMessage()
+        #if not self.getKeyBundle(sender):
+        #    return self.recvMessage()
 
         key_bundle = self.key_bundles[sender]
+
 
         IK_pa = recv[:EC_KEY_LEN]
         EK_pa = recv[EC_KEY_LEN:EC_KEY_LEN*2]
@@ -302,15 +311,15 @@ class User():
 
 
 
-    def recvMessage(self) -> str:
+    def recvMessage(self,sender : str, recv: bytes) -> str:
 
         # receive the hello message
-        sender, recv = server.get_message(self.name)
-        if sender=='none':
-            print('No new messages')
-            exit(1)
-        else:
-            print(f'Received Message from {sender}')
+        #sender, recv = server.get_message(self.name)
+        #if sender=='none':
+            #print('no new messages')
+            #exit(1)
+        #else:
+            #print(f'received message from {sender}')
 
 
         key_bundle = self.key_bundles[sender]
@@ -333,6 +342,25 @@ class User():
         message=json.loads(p_all)
 
         return message
+
+
+    def recvAllMessages(self) -> list[str] | None:
+        sender, messageList = server.get_message(self.name)
+
+        if sender=='none':
+            print('no new messages')
+            return
+            
+        messages=[]
+        
+        if self.getKeyBundle(sender):
+            messages.append(self.recvInitialMessage(sender,messageList.pop(0)))
+        
+        for msg in messageList:
+            messages.append(self.recvMessage(sender,msg))
+        
+        return messages
+
 
 
 

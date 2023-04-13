@@ -47,19 +47,26 @@ class Server():
 
     def send(self,fr:str,to:str,message:bytes):
         self.refresh()
-        self.messages[(fr,to)]=message
+
+        if (fr,to) not in self.messages:
+            self.messages[(fr,to)]=[]
+
+        self.messages[(fr,to)].append(message)
         self.dump()
 
 
-    def get_message(self,username:str) -> tuple[str,bytes]:
+    def get_message(self,username:str) -> tuple[str,list[bytes]]:
 
         self.refresh()
-        out=('none',bytes())
+        out=('none',[bytes()])
 
         for x,y in self.messages.items():
             if x[1]==username:
-                out=x[0],y
+                out=x[0],y.copy()
+                self.messages.pop(x)
                 break
+        
+        self.dump()
         return out
 
         
