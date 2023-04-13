@@ -26,10 +26,11 @@ while True:
                 if not user.initialHandshake(receiver) :
                     continue
                 user.generateSendSecretKey(receiver)
-                user.sendInitialMessage(receiver,f"Initial message from {username}")
-            
-            message=input("Enter the message to be send\n")
-            user.sendMessage(receiver,message)
+                message=input("Enter the message to be send\n")
+                user.sendInitialMessage(receiver,message)
+            else: 
+                message=input("Enter the message to be send\n")
+                user.sendMessage(receiver,message)
         
         case "2":
             message=user.recvAllMessages() #if not initial message it will call recvMessage()
