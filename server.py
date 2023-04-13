@@ -55,16 +55,18 @@ class Server():
         self.dump()
 
 
-    def get_message(self,username:str) -> tuple[str,list[bytes]]:
+    def get_message(self,username:str) -> list[tuple[str,list[bytes]]]:
 
         self.refresh()
-        out=('none',[bytes()])
+        out=[]
 
-        for x,y in self.messages.items():
+        messages=self.messages.copy()
+
+        for x,y in messages.items():
             if x[1]==username:
-                out=x[0],y.copy()
+                out.append((x[0],y.copy()))
                 self.messages.pop(x)
-                break
+                
         
         self.dump()
         return out

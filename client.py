@@ -345,19 +345,20 @@ class User():
 
 
     def recvAllMessages(self) -> list[str] | None:
-        sender, messageList = server.get_message(self.name)
+        allMessageList = server.get_message(self.name)
 
-        if sender=='none':
-            print('no new messages')
+        if len(allMessageList)==0:
+            print('No new messages')
             return
             
         messages=[]
         
-        if self.getKeyBundle(sender):
-            messages.append(self.recvInitialMessage(sender,messageList.pop(0)))
-        
-        for msg in messageList:
-            messages.append(self.recvMessage(sender,msg))
+        for sender,messageList in allMessageList:
+            if self.getKeyBundle(sender):
+                messages.append(self.recvInitialMessage(sender,messageList.pop(0)))
+            
+            for msg in messageList:
+                messages.append(self.recvMessage(sender,msg))
         
         return messages
 
