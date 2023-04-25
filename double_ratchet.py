@@ -32,6 +32,11 @@ def kdf_ck(ck:bytes) -> Tuple[bytes, bytes]:
     output = prk.expand(b"ChainKey", 64)
     return (output[:32], output[32:])
 
+def int_to_bytes(x:int) -> bytes:
+    return x.to_bytes((x.bit_length() + 7) // 8, 'big')
+
+def bytes_to_int(b:bytes) -> int:
+    return int.from_bytes(b, 'big')
 
 class DoubleRatchet():
     
@@ -83,8 +88,11 @@ class DoubleRatchet():
         self.root_chain = hkdf.Hkdf(b"DoubleRatchet", self.root_key, hashlib.sha256)
         return output
     
-    #function that returns Tuple containing key to encrypt and new public key as integer
-    def send(self) -> Tuple[bytes, int or None]:
+    #function that returns Tuple containing key to encrypt and new public key as bytes
+    def send(self) -> Tuple[bytes, bytes or None]:
+        if self.root_key == None:
+            raise Exception("Root Key not initialized, call 'initialize()' first")
+        
         print("Generating sending encryption key along with new public key")
         if self.last_done == None:
             self.last_done = "send"
@@ -92,7 +100,7 @@ class DoubleRatchet():
             (self.root_key, self.send_key) = kdf_rk(self.root_key, dh_output)
             self.refresh_chains()
             output = self.chain_step("send")
-            public_key = self.our_dh_obj.gen_public_key()
+            public_key = int_to_bytes(self.our_dh_obj.gen_public_key())
             return (output, public_key)
         
         elif self.last_done == "recv":
@@ -102,18 +110,21 @@ class DoubleRatchet():
             (self.root_key, self.send_key) = kdf_rk(self.root_key, dh_output)
             self.refresh_chains()
             key = self.chain_step("send")
-            return (key, new_pub) #(the key to encrypt the data, new public key)
+            return (key, int_to_bytes(new_pub)) #(the key to encrypt the data, new public key)
         
         elif self.last_done == "send":
             self.last_done = "send"
             output = self.chain_step("send")
             return (output, None) #Here second value is None because the same person is sending again
         
-    
-    def recv(self, public_key) -> bytes:
+    #function that takes as input received public key and returns the key to decrypt the data
+    def recv(self, public_key:bytes or None) -> bytes:
+        if self.root_key == None:
+            raise Exception("Root Key not initialized, call 'initialize()' first")
+        
         print("Generating receiving decryption key")
         if public_key != None:
-            self.their_public_key = public_key
+            self.their_public_key = bytes_to_int(public_key)
         if self.last_done == None:
             self.last_done = "recv"
             dh_output = self.our_dh_obj.gen_shared_key(self.their_public_key)
