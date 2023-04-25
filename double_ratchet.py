@@ -80,9 +80,9 @@ class DoubleRatchet():
             raise Exception("Invalid chain")
     
     #function to update the key pair
-    def update_key_pair(self) -> int:
+    def update_key_pair(self) -> bytes:
         self.our_dh_obj = get_dh_obj()
-        return self.our_dh_obj.gen_public_key()
+        return int_to_bytes(self.our_dh_obj.gen_public_key())
 
     def update_root(self) -> bytes:
         self.root_key, output = kdf_ck(self.root_key)
@@ -146,23 +146,25 @@ class DoubleRatchet():
             output = self.chain_step("receive")
             return output
 
-# def main():
-#     alice = DoubleRatchet()
-#     bob = DoubleRatchet()
-#     root_key = os.urandom(32)
-#     alice.initialize(root_key, bob.update_key_pair())
-#     ret = alice.send()
-#     alice_send_enc = ret[0]
-#     alice_new_pub = ret[1]
+def main():
+    alice = DoubleRatchet()
+    bob = DoubleRatchet()
+    root_key = os.urandom(32)
+    bob_public_key = bob.update_key_pair()
+    bob_bytes = int_to_bytes(bob_public_key)
+    alice.initialize(root_key, bob_bytes)
+    ret = alice.send()
+    alice_send_enc = ret[0]
+    alice_new_pub = ret[1]
     
-#     print("Alice's send key: ", alice_send_enc)
-#     print("Alice's new public key: ", alice_new_pub)
+    print("Alice's send key: ", alice_send_enc)
+    print("Alice's new public key: ", alice_new_pub)
 
-#     bob.initialize(root_key, alice_new_pub)
-#     ret = bob.recv(alice_new_pub)
-#     bob_recv_enc = ret
-#     print("Bob's receive key: ", bob_recv_enc)
+    bob.initialize(root_key, alice_new_pub)
+    ret = bob.recv(alice_new_pub)
+    bob_recv_enc = ret
+    print("Bob's receive key: ", bob_recv_enc)
 
 
-# if __name__ == "__main__":
-#     main()
+if __name__ == "__main__":
+    main()
