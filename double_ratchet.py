@@ -49,6 +49,7 @@ class DoubleRatchet():
         self.send_key = None
         self.last_done = None
         self.root_chain = None
+        self.public_key = None
 
     #function to initialize the double ratchet
     def initialize(self, root_key:bytes, their_public_key:int) -> None:
@@ -89,7 +90,7 @@ class DoubleRatchet():
         return output
     
     #function that returns Tuple containing key to encrypt and new public key as bytes
-    def send(self) -> Tuple[bytes, bytes or None]:
+    def send(self) -> Tuple[bytes, bytes]:
         if self.root_key == None:
             raise Exception("Root Key not initialized, call 'initialize()' first")
         
@@ -100,12 +101,13 @@ class DoubleRatchet():
             (self.root_key, self.send_key) = kdf_rk(self.root_key, dh_output)
             self.refresh_chains()
             output = self.chain_step("send")
-            public_key = int_to_bytes(self.our_dh_obj.gen_public_key())
-            return (output, public_key)
+            self.public_key = self.our_dh_obj.gen_public_key()
+            return (output, int_to_bytes(self.public_key))
         
         elif self.last_done == "recv":
             self.last_done = "send"
             new_pub = self.update_key_pair()
+            self.public_key = new_pub
             dh_output = self.our_dh_obj.gen_shared_key(self.their_public_key)
             (self.root_key, self.send_key) = kdf_rk(self.root_key, dh_output)
             self.refresh_chains()
@@ -115,10 +117,10 @@ class DoubleRatchet():
         elif self.last_done == "send":
             self.last_done = "send"
             output = self.chain_step("send")
-            return (output, None) #Here second value is None because the same person is sending again
+            return (output, int_to_bytes(self.public_key)) #Here second value is old public key
         
     #function that takes as input received public key and returns the key to decrypt the data
-    def recv(self, public_key:bytes or None) -> bytes:
+    def recv(self, public_key:bytes) -> bytes:
         if self.root_key == None:
             raise Exception("Root Key not initialized, call 'initialize()' first")
         
