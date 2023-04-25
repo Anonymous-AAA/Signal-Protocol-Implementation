@@ -52,9 +52,9 @@ class DoubleRatchet():
         self.public_key = None
 
     #function to initialize the double ratchet
-    def initialize(self, root_key:bytes, their_public_key:int) -> None:
+    def initialize(self, root_key:bytes, their_public_key:bytes) -> None:
         self.root_key = root_key
-        self.their_public_key = their_public_key
+        self.their_public_key = bytes_to_int(their_public_key)
         self.root_chain = hkdf.Hkdf(b"DoubleRatchet", self.root_key , hashlib.sha256)
         print("Initialized Diffie Hellman ratchet with root key and receiver public key")
 
