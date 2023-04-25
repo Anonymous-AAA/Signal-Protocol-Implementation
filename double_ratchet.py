@@ -57,12 +57,13 @@ class DoubleRatchet():
         self.their_public_key = their_public_key
         self.root_chain = hkdf.Hkdf(b"DoubleRatchet", self.root_key , hashlib.sha256)
 
-        
+    
+    #function to refresh the chains with new keys derived from the root send and receive keys
     def refresh_chains(self) -> None:
         self.recv_chain = hkdf.Hkdf(b"DoubleRatchet", self.recv_key, hashlib.sha256)
         self.send_chain = hkdf.Hkdf(b"DoubleRatchet", self.send_key , hashlib.sha256)
 
-    def chain_step(self, chain:str) -> bytes:
+    def chain_step(self, chain:str) -> bytes: #input should be either "send" or "receive"
         if chain == "send":
             output = self.send_chain.expand(b"common_key", 64)
             self.send_key = output[:32]
@@ -109,7 +110,7 @@ class DoubleRatchet():
         elif self.last_done == "send":
             self.last_done = "send"
             output = self.chain_step("send")
-            return (output, None)
+            return (output, None) #Here second value is None because the same person is sending again
         
     
     def recv(self, public_key) -> bytes:
