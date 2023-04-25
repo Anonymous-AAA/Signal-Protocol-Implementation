@@ -146,24 +146,24 @@ class DoubleRatchet():
             output = self.chain_step("receive")
             return output
 
-def main():
-    alice = DoubleRatchet()
-    bob = DoubleRatchet()
-    root_key = os.urandom(32)
-    bob_public_key = bob.update_key_pair()
-    alice.initialize(root_key, bob_public_key)
-    ret = alice.send()
-    alice_send_enc = ret[0]
-    alice_new_pub = ret[1]
+# def main():
+#     alice = DoubleRatchet()
+#     bob = DoubleRatchet()
+#     root_key = os.urandom(32)
+#     bob_public_key = bob.update_key_pair()
+#     alice.initialize(root_key, bob_public_key)
+#     ret = alice.send()
+#     alice_send_enc = ret[0]
+#     alice_new_pub = ret[1]
     
-    print("Alice's send key: ", alice_send_enc)
-    print("Alice's new public key: ", alice_new_pub)
+#     print("Alice's send key: ", alice_send_enc)
+#     print("Alice's new public key: ", alice_new_pub)
 
-    bob.initialize(root_key, alice_new_pub)
-    ret = bob.recv(alice_new_pub)
-    bob_recv_enc = ret
-    print("Bob's receive key: ", bob_recv_enc)
+#     bob.initialize(root_key, alice_new_pub)
+#     ret = bob.recv(alice_new_pub)
+#     bob_recv_enc = ret
+#     print("Bob's receive key: ", bob_recv_enc)
 
 
-if __name__ == "__main__":
-    main()
+# if __name__ == "__main__":
+#     main()
