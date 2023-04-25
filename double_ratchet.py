@@ -1,10 +1,6 @@
 import os
 import hashlib
 import base64
-from cryptography.hazmat.primitives.ciphers.aead import AESGCM
-from cryptography.hazmat.primitives.kdf.hkdf import HKDF
-from cryptography.hazmat.backends import default_backend
-from cryptography.hazmat.primitives.asymmetric import dh
 import pyDH
 from typing import Tuple
 from Crypto.Cipher import AES
@@ -138,23 +134,23 @@ class DoubleRatchet():
             output = self.chain_step("receive")
             return output
 
-def main():
-    alice = DoubleRatchet()
-    bob = DoubleRatchet()
-    root_key = os.urandom(32)
-    alice.initialize(root_key, bob.update_key_pair())
-    ret = alice.send()
-    alice_send_enc = ret[0]
-    alice_new_pub = ret[1]
+# def main():
+#     alice = DoubleRatchet()
+#     bob = DoubleRatchet()
+#     root_key = os.urandom(32)
+#     alice.initialize(root_key, bob.update_key_pair())
+#     ret = alice.send()
+#     alice_send_enc = ret[0]
+#     alice_new_pub = ret[1]
     
-    print("Alice's send key: ", alice_send_enc)
-    print("Alice's new public key: ", alice_new_pub)
+#     print("Alice's send key: ", alice_send_enc)
+#     print("Alice's new public key: ", alice_new_pub)
 
-    bob.initialize(root_key, alice_new_pub)
-    ret = bob.recv(alice_new_pub)
-    bob_recv_enc = ret
-    print("Bob's receive key: ", bob_recv_enc)
+#     bob.initialize(root_key, alice_new_pub)
+#     ret = bob.recv(alice_new_pub)
+#     bob_recv_enc = ret
+#     print("Bob's receive key: ", bob_recv_enc)
 
 
-if __name__ == "__main__":
-    main()
+# if __name__ == "__main__":
+#     main()
