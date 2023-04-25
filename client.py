@@ -8,7 +8,7 @@ from Crypto.Cipher import AES
 import json
 import os
 from server import Server
-import double_ratchet
+import double_ratchet as dr
 
 
 KDF_F = b'\xff' * 32
@@ -19,6 +19,7 @@ AES_N_LEN = 16
 AES_TAG_LEN =16
 EC_KEY_LEN = 32
 EC_SIGN_LEN=64
+PUB_KEY_LEN=256
 
 server=Server()
 
@@ -43,14 +44,15 @@ class User():
             self.OPKs.append((sk, pk))
             #  for later steps
         self.key_bundles = {}
-        self.dr={}
+        self.dr=dr.DoubleRatchet()
     
     def publish(self):
         bundle= {
           'IK_p': self.IK_p,
           'SPK_p': self.SPK_p,
           'SPK_sig': self.SPK_sig,
-          'OPK_p': self.OPKs_p.copy()  #all keys are send
+          'OPK_p': self.OPKs_p.copy(),  #all keys are send
+          'DR_p':self.dr.update_key_pair()  #diffie hellman public key
         }
         server.publish(self.name,bundle)
 
@@ -128,6 +130,8 @@ class User():
         #Delete ephemeral private key
         self.key_bundles[user_name]['EK_s'] = ""
 
+        # Initialize DR
+        self.dr.initialize(key_bundle['sk'],key_bundle['DR_p'])   #initializing dr
 
 
     def sendInitialMessage(self,to: str, ad: str):
@@ -152,12 +156,17 @@ class User():
 
         # 16 byte aes nonce
         nonce = get_random_bytes(AES_N_LEN)
-        cipher = AES.new(key_bundle['sk'], AES.MODE_GCM, nonce=nonce, mac_len=AES_TAG_LEN)
+
+        key,publicKey=self.dr.send()
+
+        cipher = AES.new(key, AES.MODE_GCM, nonce=nonce, mac_len=AES_TAG_LEN)
         # 32 + 32 + len(ad) byte cipher text
         ciphertext, tag = cipher.encrypt_and_digest(signature + self.IK_p+ key_bundle['IK_p']+ b_ad)
 
-        # initial message: (32 + 32 +32) + 16 + 16 + 64 + 32 + 32 + len(ad)
-        message = key_comb + nonce + tag + ciphertext
+
+
+        # initial message: (32 + 32 +32) + 16 + 16 + 64 + pub_key_size +32 + 32 + len(ad)
+        message = key_comb + nonce + tag + publicKey +ciphertext
 
         #print(f"Message sent : {message}")
 
@@ -189,7 +198,8 @@ class User():
         OPK_pb = recv[EC_KEY_LEN*2:EC_KEY_LEN*3]
         nonce = recv[EC_KEY_LEN*3:EC_KEY_LEN*3+AES_N_LEN]
         tag = recv[EC_KEY_LEN*3+AES_N_LEN:EC_KEY_LEN*3+AES_N_LEN+AES_TAG_LEN]
-        ciphertext = recv[EC_KEY_LEN*3+AES_N_LEN+AES_TAG_LEN:]
+        publicKey=recv[EC_KEY_LEN*3+AES_N_LEN+AES_TAG_LEN:EC_KEY_LEN*3+AES_N_LEN+AES_TAG_LEN+PUB_KEY_LEN]
+        ciphertext = recv[EC_KEY_LEN*3+AES_N_LEN+AES_TAG_LEN+PUB_KEY_LEN:]
 
         # Verify if the key in hello message matches the key bundles from server
         if (IK_pa != key_bundle['IK_p']):
@@ -210,7 +220,10 @@ class User():
 
 
         key_bundle['sk'] = sk
-        message = self.decryptAndVerify(key_bundle, IK_pa, EK_pa, nonce, tag, ciphertext,OPK_pb)
+
+        self.dr.initialize(sk,publicKey)
+        decryptionKey=self.dr.recv(publicKey)
+        message = self.decryptAndVerify(decryptionKey, IK_pa, EK_pa, nonce, tag, ciphertext,OPK_pb)
 
 
 
@@ -224,9 +237,9 @@ class User():
 
 
 
-    def decryptAndVerify(self, key_bundle :dict, IK_pa :bytes, EK_pa : bytes, nonce : bytes, tag : bytes, ciphertext : bytes, OPK_pb: bytes) -> str:
+    def decryptAndVerify(self, decryptionKey:bytes, IK_pa :bytes, EK_pa : bytes, nonce : bytes, tag : bytes, ciphertext : bytes, OPK_pb: bytes) -> str:
         # Decrypt cipher text and verify
-        cipher = AES.new(key_bundle['sk'], AES.MODE_GCM, nonce=nonce, mac_len=AES_TAG_LEN)
+        cipher = AES.new(decryptionKey, AES.MODE_GCM, nonce=nonce, mac_len=AES_TAG_LEN)
         try:
             p_all = cipher.decrypt_and_verify(ciphertext, tag)
         except ValueError:
@@ -302,9 +315,10 @@ class User():
 
         # 16 byte aes nonce
         nonce = get_random_bytes(AES_N_LEN)
-        cipher = AES.new(key_bundle['sk'], AES.MODE_GCM, nonce=nonce, mac_len=AES_TAG_LEN)
+        key,publicKey=self.dr.send()
+        cipher = AES.new(key, AES.MODE_GCM, nonce=nonce, mac_len=AES_TAG_LEN)
         ciphertext, tag = cipher.encrypt_and_digest(b_ad)
-        server.send(self.name,to,nonce+tag+ciphertext)
+        server.send(self.name,to,nonce+tag+publicKey+ciphertext)
         print(f"Message sent")
 
 
@@ -325,10 +339,12 @@ class User():
 
         nonce = recv[:AES_N_LEN]
         tag = recv[AES_N_LEN:AES_N_LEN+AES_TAG_LEN]
-        ciphertext = recv[AES_N_LEN+AES_TAG_LEN:]
+        publicKey=recv[AES_N_LEN+AES_TAG_LEN:AES_N_LEN+AES_TAG_LEN+PUB_KEY_LEN]
+        ciphertext = recv[AES_N_LEN+AES_TAG_LEN+PUB_KEY_LEN:]
 
 
-        cipher = AES.new(key_bundle['sk'], AES.MODE_GCM, nonce=nonce, mac_len=AES_TAG_LEN)
+        decryptionKey=self.dr.recv(publicKey)
+        cipher = AES.new(decryptionKey, AES.MODE_GCM, nonce=nonce, mac_len=AES_TAG_LEN)
         try:
             p_all = cipher.decrypt_and_verify(ciphertext, tag)
         except ValueError:
