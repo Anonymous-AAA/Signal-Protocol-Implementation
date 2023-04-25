@@ -85,6 +85,7 @@ class DoubleRatchet():
     
     #function that returns Tuple containing key to encrypt and new public key as integer
     def send(self) -> Tuple[bytes, int or None]:
+        print("Generating sending encryption key along with new public key")
         if self.last_done == None:
             self.last_done = "send"
             dh_output = self.our_dh_obj.gen_shared_key(self.their_public_key)
@@ -110,6 +111,7 @@ class DoubleRatchet():
         
     
     def recv(self, public_key) -> bytes:
+        print("Generating receiving decryption key")
         if public_key != None:
             self.their_public_key = public_key
         if self.last_done == None:
