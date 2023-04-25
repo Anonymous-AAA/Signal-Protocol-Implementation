@@ -101,8 +101,8 @@ class DoubleRatchet():
             (self.root_key, self.send_key) = kdf_rk(self.root_key, dh_output)
             self.refresh_chains()
             output = self.chain_step("send")
-            self.public_key = self.our_dh_obj.gen_public_key()
-            return (output, int_to_bytes(self.public_key))
+            self.public_key = int_to_bytes(self.our_dh_obj.gen_public_key())
+            return (output, self.public_key)
         
         elif self.last_done == "recv":
             self.last_done = "send"
@@ -112,12 +112,12 @@ class DoubleRatchet():
             (self.root_key, self.send_key) = kdf_rk(self.root_key, dh_output)
             self.refresh_chains()
             key = self.chain_step("send")
-            return (key, int_to_bytes(new_pub)) #(the key to encrypt the data, new public key)
+            return (key, new_pub) #(the key to encrypt the data, new public key)
         
         elif self.last_done == "send":
             self.last_done = "send"
             output = self.chain_step("send")
-            return (output, int_to_bytes(self.public_key)) #Here second value is old public key
+            return (output, self.public_key) #Here second value is old public key
         
     #function that takes as input received public key and returns the key to decrypt the data
     def recv(self, public_key:bytes) -> bytes:
@@ -151,8 +151,7 @@ def main():
     bob = DoubleRatchet()
     root_key = os.urandom(32)
     bob_public_key = bob.update_key_pair()
-    bob_bytes = int_to_bytes(bob_public_key)
-    alice.initialize(root_key, bob_bytes)
+    alice.initialize(root_key, bob_public_key)
     ret = alice.send()
     alice_send_enc = ret[0]
     alice_new_pub = ret[1]
