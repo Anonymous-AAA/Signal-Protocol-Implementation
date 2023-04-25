@@ -15,12 +15,6 @@ def b64enc(b):
 def b64dec(b):
     return base64.b64decode(b)
 
-def conv_bytes_append(a:int, b:int) -> bytes:
-    return bytes([a]) + bytes([b])
-
-def conv_bytes(a:int) -> bytes:
-    num_bytes = (a.bit_length() + 7) // 8
-    return a.to_bytes(num_bytes, 'big')
 
 def str_to_bytes(s:str) -> bytes:
     return s.encode('utf-8')
@@ -56,12 +50,14 @@ class DoubleRatchet():
         self.root_key = root_key
         self.their_public_key = their_public_key
         self.root_chain = hkdf.Hkdf(b"DoubleRatchet", self.root_key , hashlib.sha256)
+        print("Initialized Diffie Hellman ratchet with root key and receiver public key")
 
     
     #function to refresh the chains with new keys derived from the root send and receive keys
     def refresh_chains(self) -> None:
         self.recv_chain = hkdf.Hkdf(b"DoubleRatchet", self.recv_key, hashlib.sha256)
         self.send_chain = hkdf.Hkdf(b"DoubleRatchet", self.send_key , hashlib.sha256)
+        print("Chains are updated")
 
     def chain_step(self, chain:str) -> bytes: #input should be either "send" or "receive"
         if chain == "send":

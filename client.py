@@ -8,6 +8,7 @@ from Crypto.Cipher import AES
 import json
 import os
 from server import Server
+import double_ratchet
 
 
 KDF_F = b'\xff' * 32
@@ -42,7 +43,7 @@ class User():
             self.OPKs.append((sk, pk))
             #  for later steps
         self.key_bundles = {}
-        self.dr_keys= {}
+        self.dr={}
     
     def publish(self):
         bundle= {
@@ -56,7 +57,7 @@ class User():
 
  # Get key bundle from a server object
     def getKeyBundle(self,user_name :str) -> bool|None:
-        if user_name in self.key_bundles and user_name in self.dr_keys:
+        if user_name in self.key_bundles:
             print(f'Already stored  {user_name} locally, no need handshake again')
             return False
 
@@ -163,8 +164,6 @@ class User():
         server.send(self.name,to,message)
         print(f"Initial Message sent")
 
-        # For Double Ratchet
-        self.dr_state_initialize(to, key_bundle['sk'], [key_bundle['EK_s'], key_bundle['EK_p']], "")
 
 
 
@@ -213,8 +212,6 @@ class User():
         key_bundle['sk'] = sk
         message = self.decryptAndVerify(key_bundle, IK_pa, EK_pa, nonce, tag, ciphertext,OPK_pb)
 
-        # For Double Ratchet
-        self.dr_state_initialize(sender, sk, [], EK_pa)
 
 
         #Delete one time prekey for forward secrecy
@@ -367,18 +364,6 @@ class User():
 
 
 
-    # double rachet
-    def dr_state_initialize(self, user_name, RK, DH_pair, DH_p):
-        self.dr_keys[user_name] = {
-            "RK": RK,
-            "DH_pair": DH_pair,
-            "DH_p": DH_p,
-            "CKs": [],
-            "CKr": [],
-            "Ns": 0,
-            "Nr": 0,
-            "PN": 0
-        }
 
     def search_OPK_lst(self,OPK_pb : bytes) -> x25519.X25519PrivateKey | None:
 
@@ -428,15 +413,3 @@ class User():
         k=curve.verifySignature(public_key,message,signature)
         return k==0
 
-
-    def KDF_RK(self,rk, dh_out):
-        out = HKDF(dh_out, 64, rk, SHA256, 1)
-
-        rk_input_material = out[:32]
-        ck = out[32:]
-        return rk_input_material, ck
-    
-    def KDF_CK(self,ck):
-        ck_input_material = HMAC.new(ck, digestmod=SHA256).update(b'\x01').digest()
-        mk = HMAC.new(ck, digestmod=SHA256).update(b'\x02').digest()
-        return ck_input_material, mk
