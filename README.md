@@ -15,7 +15,7 @@ Double Ratchet : https://signal.org/docs/specifications/doubleratchet/
 
 1. Create a virtual environment using: $ python3 -m venv path/to/venv
 
-2. Activate the virtual environment using: $ cd path/to/venv
+2. Activate the virtual environment using: $ cd path/to/venv <b>
                                            $ source bin/activate
                         
 3. Install required packages and modules using: $pip install -r requirements.txt
