@@ -13,12 +13,12 @@ Double Ratchet : https://signal.org/docs/specifications/doubleratchet/
 
 ## Setting Up on Linux
 
-1. Create a virtual environment using: $ python3 -m venv path/to/venv
+1. Create a virtual environment : `python3 -m venv path/to/venv`
 
-2. Activate the virtual environment using: $ cd path/to/venv && source bin/activate
+2. Activate the virtual environment : `cd path/to/venv && source bin/activate`
                         
-3. Install required packages and modules using: $pip install -r requirements.txt
+3. Install required packages and modules : `pip install -r requirements.txt`
 
-4. Run the app.py program using: $python app.py
+4. Run the app.py program : `python app.py`
 
-5. Later you can deactivate the virtual environment using: $ deactivate
+5. Later you can deactivate the virtual environment : `deactivate`
