@@ -2,9 +2,7 @@
 A simple implementation of Signal Protocol for end to end encryption in Python 
 
 
-
-
-https://user-images.githubusercontent.com/77876851/234773476-a67d689b-186d-4ff0-806e-cbd1ce52b18a.mp4
+[Showcase](https://github.com/user-attachments/assets/9b55c439-dedb-47c3-afe2-be1433813d33)
 
 ## References
 X3DH : https://signal.org/docs/specifications/x3dh/ 
